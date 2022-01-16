@@ -9,5 +9,8 @@ edition = "2021"
 rusqlite = { versin = "0.26.3", features = ["chrono"]  }
 chrono = "0.4.19"
 tracing = "0.1.29"
+color-eyre = "0.5"
+tracing-appender = "0.2.0"
+tracing-subscriber = "0.3.4"
 
 

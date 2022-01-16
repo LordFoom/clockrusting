@@ -1,3 +1,6 @@
+mod command;
+mod config;
+
 ///Library for adding time tracking to an application
 
 #[cfg(test)]
