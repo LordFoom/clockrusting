@@ -1,5 +1,6 @@
 mod command;
 mod config;
+mod db;
 
 ///Library for adding time tracking to an application
 
