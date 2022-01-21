@@ -110,7 +110,7 @@ mod tests {
     fn test_create_clock_in() {
         config::setup_test_logging();
         match create_command("clock-in::2021-12-20T20:22:29.52Z::this is a test"){
-            Ok(Command{ command: cmd, task, cmd_datetime:_}) => { assert_eq!(task.to_string(), "this is a test") }
+            Ok(Command{ command: _, task, cmd_datetime:_}) => { assert_eq!(task.to_string(), "this is a test") }
             Err(why) => {
                 println!("We have FAILED: {}", why);
                 assert!(false);//let it end
@@ -123,7 +123,7 @@ mod tests {
         config::setup_test_logging();
         let result = create_command("clock-out::2021-12-20T20:36:23.44Z::this is the clock out test");
         match result{
-            Ok(Command{task, command: cmd, cmd_datetime}) => assert_eq!(task.to_string(), "this is the clock out test"),
+            Ok(Command{task, command:_, cmd_datetime: _}) => assert_eq!(task.to_string(), "this is the clock out test"),
             Err(why) => {
                 println!("We have FAILED: {}", why);
                 assert_eq!(false, true);//let it end
