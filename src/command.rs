@@ -33,13 +33,13 @@ impl Hash for CommandType{
 #[derive(Hash)]
 pub struct Command {
     pub command: CommandType,
-    pub cmd_datetime: DateTime<FixedOffset>,
+    pub cmd_datetime: DateTime<Utc>,
     pub task:  String,
 }
 
 
 impl Command {
-    fn new(cmd: CommandType, cmd_datetime:DateTime<FixedOffset>, task: String) -> Self {
+    fn new(cmd: CommandType, cmd_datetime:DateTime<Utc>, task: String) -> Self {
         Self {
             command: cmd,
             cmd_datetime,
@@ -56,6 +56,11 @@ impl Display for Command {
 }
 
 
+///Create a command from string in following format
+/// COMMAND-TYPE::TIME::DESCRIPTION
+/// where command-type is 'clock-in' or 'clock-out'
+/// TIME is rfc3339 time string
+/// DESCRIPTION is the description of the task to be tracked
 pub fn create_command(check_str: &str) -> Result<Command, Report> {
 
     // let task = split.as_str();
@@ -79,7 +84,7 @@ pub fn create_command(check_str: &str) -> Result<Command, Report> {
         Err(why) => { return Err(eyre!("ParseError: {}\n FAIL: please supply datetime in rfc3339 format, eg: { }", why, COMMAND_EG))}
     };
 
-    Ok(Command::new(cmd, dtime, String::from(task)))
+    Ok(Command::new(cmd, dtime.with_timezone(&Utc), String::from(task)))
     
 }
 
