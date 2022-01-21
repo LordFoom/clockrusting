@@ -39,7 +39,7 @@ pub struct Command {
 
 
 impl Command {
-    fn new(cmd: CommandType, cmd_datetime:DateTime<Utc>, task: String) -> Self {
+    pub fn new(cmd: CommandType, cmd_datetime:DateTime<Utc>, task: String) -> Self {
         Self {
             command: cmd,
             cmd_datetime,
