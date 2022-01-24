@@ -51,7 +51,7 @@ impl Command {
 
 impl Display for Command {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.command, self.task)
+        write!(f, "{}::{}::{}", self.command, self.cmd_datetime, self.task)
     }
 }
 

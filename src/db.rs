@@ -59,11 +59,10 @@ impl ClockRuster {
 
 #[cfg(test)]
 mod tests{
-    use color_eyre::Report;
-    use tracing::{error, Level};
-    use tracing_subscriber::FmtSubscriber;
+    use chrono::Utc;
     use crate::config;
 
+    use crate::command::CommandType;
     use super::*;
 
     const TEST_DB_STRING: &str = "./clock_rust_test";
@@ -87,7 +86,7 @@ mod tests{
                  row.get_unwrap(0)
             }else{ 0 };
             //delete the file
-            std::fs::remove_file("./clock_rust_test").expect("could not delete test sqlite db file");
+            std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
             assert_eq!(table_count, 1)
 
         }else{
@@ -96,9 +95,18 @@ mod tests{
 
     }
 
-    // #[test]
-    // fn text_run_clock_in_command(){
-    //     ClockRuster::init("/")
-    // }
+    #[test]
+    fn test_run_clock_in_command(){
+        config::setup_test_logging();
+        let cr = ClockRuster::init(TEST_DB_STRING);
+        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+            let cmd = Command::new(CommandType::ClockIn, Utc::now(), "Test test data".to_string());
+            match cr.run_clock_command(&cmd) {
+                Ok(_)=>println!("Successfully ran clock in command: {} ", cmd),
+                Err(why)=>panic!("Unable to run command: {}", why),
+            }
+        }
+    }
+
 }
 
