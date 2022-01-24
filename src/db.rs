@@ -39,7 +39,7 @@ impl ClockRuster {
         //and create it if it does not exist
     }
 
-    pub fn run_clock_command(self, cmd: Command) -> Result<(), Report> {
+    pub fn run_clock_command(self, cmd: &Command) -> Result<(), Report> {
         let conn = Connection::open(&self.connection_string)?;
         match self.ensure_storage_exists(&conn){
             Ok(_) => {
