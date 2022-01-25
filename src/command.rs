@@ -149,8 +149,8 @@ mod tests {
             Ok(cmd) => {
                 let mut hasher  = DefaultHasher::new();
                 cmd.hash(&mut hasher);
-                assert_eq!(11897792561300911064, hasher.finish());
                 println!("{}", hasher.finish());
+                assert_eq!(10252799804255487277, hasher.finish());
             }
             Err(why) => {
                 panic!("We have FAILED: {}", why);
