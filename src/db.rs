@@ -99,7 +99,7 @@ mod tests{
     fn test_run_clock_in_command(){
         config::setup_test_logging();
         let cr = ClockRuster::init(TEST_DB_STRING);
-        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+        if let Ok(_) = Connection::open(cr.connection_string.clone()){
             let cmd = Command::new(CommandType::ClockIn, Utc::now(), "Test test data".to_string());
             match cr.run_clock_command(&cmd) {
                 Ok(_)=>println!("Successfully ran clock in command: {} ", cmd),

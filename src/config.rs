@@ -1,8 +1,6 @@
 use std::sync::Once;
-use color_eyre::Report;
-use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber;
-use tracing::{info, Level};
+use tracing::{Level};
 use tracing_subscriber::FmtSubscriber;
 
 // pub fn setup(verbose: bool, log_file_option:Option<String>) ->Result<(), Report>{

@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use chrono::{DateTime, FixedOffset, ParseResult, Utc};
+use chrono::{DateTime, Utc};
 use std::hash::{ Hash,Hasher };
 
 use color_eyre::{eyre::eyre, Report, Result};
@@ -24,18 +24,29 @@ impl Display for CommandType {
 
 impl Hash for CommandType{
 
-    fn hash<H: Hasher>(&self, state: &mut H){
+    fn hash<H:Hasher>(&self, state: &mut H)
+    {
         self.to_string().hash(state);
     }
 }
 
 ///Struct representing commands to track time
-#[derive(Hash)]
+// #[derive(Hash)]
 pub struct Command {
     pub command: CommandType,
     pub cmd_datetime: DateTime<Utc>,
     pub task:  String,
 }
+
+///Same task - same hash
+impl Hash for Command{
+    fn hash<H:Hasher>(&self, state: &mut H)
+    {
+        // self.command.hash(state);
+        self.task.hash(state);
+    }
+}
+
 
 
 impl Command {
@@ -90,7 +101,7 @@ pub fn create_command(check_str: &str) -> Result<Command, Report> {
 
 #[cfg(test)]
 mod tests {
-    use color_eyre::Report;
+    use std::collections::hash_map::DefaultHasher;
     use crate::config;
 
     use super::*;
@@ -129,5 +140,22 @@ mod tests {
                 assert_eq!(false, true);//let it end
             }
         }
+    }
+
+    #[test]
+    fn test_hash(){
+        let result = create_command("clock-out::2021-12-20T20:36:23.44Z::this is the clock out test");
+        match result{
+            Ok(cmd) => {
+                let mut hasher  = DefaultHasher::new();
+                cmd.hash(&mut hasher);
+                assert_eq!(11897792561300911064, hasher.finish());
+                println!("{}", hasher.finish());
+            }
+            Err(why) => {
+                panic!("We have FAILED: {}", why);
+            }
+        }
+
     }
 }
