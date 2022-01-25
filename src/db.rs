@@ -47,7 +47,7 @@ impl ClockRuster {
                 cmd.hash(&mut hasher);
                 let updated = conn.execute(r"INSERT into clock_rust_tasks (command, task, hash, cmd_date)
                                     VALUES (?, ?, ?, ?);",
-                             params![ cmd.command.to_string(), cmd.task, hasher.finish(), cmd.cmd_datetime  ])?;
+                             params![ cmd.command.to_string(), cmd.task, hasher.finish() as i64, cmd.cmd_datetime  ])?;
                 info!("Number of rows inserted {}", updated);
             }
             Err(y) => { return Err(eyre!("Failed to run command: {}", y))}
