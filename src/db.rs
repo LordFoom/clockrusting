@@ -1,11 +1,11 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use color_eyre::{Report, eyre::eyre };
+use color_eyre::{Report, eyre::eyre};
 use rusqlite::{Connection, params};
 use tracing::info;
 
 
-use crate::command::Command;
+use crate::command::{Command, CommandType};
 
 pub struct ClockRuster {
     connection_string: String,
@@ -24,7 +24,7 @@ impl ClockRuster {
         }
     }
 
-    fn ensure_storage_exists(self, conn: &Connection) -> Result<(), Report> {
+    fn ensure_storage_exists(&self, conn: &Connection) -> Result<(), Report> {
         //check for table's existence
         conn.execute("
             CREATE TABLE IF NOT EXISTS clock_rust_tasks(
@@ -39,7 +39,7 @@ impl ClockRuster {
         //and create it if it does not exist
     }
 
-    pub fn run_clock_command(self, cmd: &Command) -> Result<(), Report> {
+    pub fn run_clock_command(&self, cmd: &Command) -> Result<(), Report> {
         let conn = Connection::open(&self.connection_string)?;
         match self.ensure_storage_exists(&conn){
             Ok(_) => {
@@ -53,6 +53,37 @@ impl ClockRuster {
             Err(y) => { return Err(eyre!("Failed to run command: {}", y))}
         }
         Ok(())
+    }
+
+    ///Simplistic "are we tracking this task?" method
+    /// We count the number of clock-in commands
+    /// If > 0, count clock-out commands
+    /// iff clock-in count > clock-out count, return true
+    /// Else return false
+    pub fn currently_tracking(&self, task:&str)->Result<bool, Report>{
+        let conn = Connection::open(&self.connection_string)?;
+        self.ensure_storage_exists(&conn)?;
+        let mut hasher = DefaultHasher::new();
+        task.hash(&mut hasher);
+        let hash = hasher.finish() as i64;
+        //get number clock-in commands
+        let cic = self.count_command(CommandType::ClockIn, hash, &conn)?;
+        //get number clock-out commands
+        let coc  = self.count_command(CommandType::ClockOut, hash, &conn)?;
+
+        Ok(cic > coc)
+    }
+
+    pub fn count_command(&self, cmd_type: CommandType, hash: i64, conn:&Connection)->Result<i16, Report> {
+       let mut count_stm = conn.prepare("select count(*) from clock_rust_tasks where command = ?1 and hash = ?2 ")?;
+        let mut rows = count_stm.query([cmd_type.to_string(), hash.to_string()])?;
+        if let Some(i) = rows.next()?{
+            Ok(i.get(0)?)
+        }else{
+            Ok(0)
+        }
+
+
     }
 
 }
@@ -69,7 +100,7 @@ mod tests{
 
 
     #[test]
-    fn test_create_table(){
+    fn test_create_table()->Result<(), Report>{
         config::setup_test_logging();
         let cr = ClockRuster::init(TEST_DB_STRING);
         if let Ok(conn) = Connection::open(cr.connection_string.clone()){
@@ -80,9 +111,9 @@ mod tests{
             let fp = std::path::Path::new(TEST_DB_STRING);
             assert!(std::path::Path::exists(fp));
             //SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';
-            let mut stmt = conn.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='clock_rust_tasks'").unwrap();
-            let mut rows = stmt.query([]).unwrap();
-            let table_count = if let Some(row) = rows.next().unwrap(){
+            let mut stmt = conn.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='clock_rust_tasks'")?;
+            let mut rows = stmt.query([])?;
+            let table_count = if let Some(row) = rows.next()?{
                  row.get_unwrap(0)
             }else{ 0 };
             //delete the file
@@ -93,6 +124,7 @@ mod tests{
             panic!("Failed to get connection");
         }
 
+        Ok(())
     }
 
     #[test]
