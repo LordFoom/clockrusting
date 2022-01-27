@@ -71,6 +71,9 @@ impl ClockRuster {
         //get number clock-out commands
         let coc  = self.count_command(CommandType::ClockOut, hash, &conn)?;
 
+        info!("clock-in count: {}",cic);
+        info!("clock-out count: {}",coc);
+
         Ok(cic > coc)
     }
 
@@ -97,7 +100,7 @@ mod tests{
     use super::*;
 
     const TEST_DB_STRING: &str = "./clock_rust_test";
-
+    const TEST_TASK: &str = "Test test data";
 
     #[test]
     fn test_create_table()->Result<(), Report>{
@@ -128,16 +131,54 @@ mod tests{
     }
 
     #[test]
-    fn test_run_clock_in_command(){
+    fn test_run_clock_in_command()->Result<(), Report>{
         config::setup_test_logging();
         let cr = ClockRuster::init(TEST_DB_STRING);
-        if let Ok(_) = Connection::open(cr.connection_string.clone()){
+        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+            cr.ensure_storage_exists(&conn)?;
             let cmd = Command::new(CommandType::ClockIn, Utc::now(), "Test test data".to_string());
             match cr.run_clock_command(&cmd) {
                 Ok(_)=>println!("Successfully ran clock in command: {} ", cmd),
                 Err(why)=>panic!("Unable to run command: {}", why),
             }
         }
+        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
+        Ok(())
+    }
+
+    #[test]
+    fn test_curently_tracking()->Result<(), Report>{
+        config::setup_test_logging();
+
+        let cr = ClockRuster::init(TEST_DB_STRING);
+        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+            cr.ensure_storage_exists(&conn)?;
+            let cmd = Command::new(CommandType::ClockIn, Utc::now(), TEST_TASK.to_string());
+            //we clock in, we should now be tracking
+            match cr.run_clock_command(&cmd) {
+                Ok(_)=>{
+                    match cr.currently_tracking(TEST_TASK){
+                        Ok(tracking) => assert!(tracking),
+                        Err(why) => panic!("Unable to perform tracking query: {}", why),
+                    }
+                },
+                Err(why)=>panic!("Unable to run command: {}", why),
+            };
+
+            //now we clockout - should no longer be tracking
+            let cmd = Command::new(CommandType::ClockOut, Utc::now(), TEST_TASK.to_string());
+            match cr.run_clock_command(&cmd){
+                Ok(_)=>{
+                    match cr.currently_tracking(TEST_TASK){
+                        Ok(tracking) => assert!(!tracking),
+                        Err(why) => panic!("Unable to perform tracking query: {}", why),
+                    }
+                },
+                Err(why)=>panic!("Unable to run command: {}", why),
+            }
+        }
+        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
+        Ok(())
     }
 
 }
