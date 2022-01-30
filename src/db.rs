@@ -1,8 +1,10 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use chrono::{DateTime, Utc};
 use color_eyre::{Report, eyre::eyre};
 use rusqlite::{Connection, params};
 use tracing::info;
+// use std::str::FromStr;
 
 
 use crate::command::{Command, CommandType};
@@ -77,6 +79,7 @@ impl ClockRuster {
         Ok(cic > coc)
     }
 
+    ///Count the number of times a command (clock-in or clock-out) has been inserted into db
     pub fn count_command(&self, cmd_type: CommandType, hash: i64, conn:&Connection)->Result<i16, Report> {
        let mut count_stm = conn.prepare("select count(*) from clock_rust_tasks where command = ?1 and hash = ?2 ")?;
         let mut rows = count_stm.query([cmd_type.to_string(), hash.to_string()])?;
@@ -85,7 +88,81 @@ impl ClockRuster {
         }else{
             Ok(0)
         }
+    }
 
+    ///Create string with breakdown of tasks, start and end
+    /// Optionally limited by time
+    /// Optionally limited to a specific task
+    pub fn time_report(&self, opt_start:Option<Utc>, opt_end:Option<Utc>, opt_task:Option<&str>)->Result<Vec<Command>, Report>{
+        let conn = Connection::open(&self.connection_string)?;
+        let mut sql = "select command, task, cmd_date from clock_rust ".to_string();
+        let mut args = Vec::new();
+        let mut where_inserted = false;
+
+        //okay let's try this with straight up strings
+        if let Some(start) = opt_start{
+            if !where_inserted  {
+                sql += " WHERE ";
+                where_inserted = true;
+            }
+
+            sql += " cmd_date >= ?";
+            args.push(start.to_string());
+        };
+
+        if let Some(end) = opt_start{
+            if !where_inserted  {
+                sql += " WHERE ";
+                where_inserted = true;
+            }else{
+                sql += " AND ";
+            }
+
+            sql += " cmd_date <= ?";
+            args.push(end.to_string());
+        };
+
+        sql += " ORDER BY cmd_date DESC";
+        if let Some(task) = opt_task{
+            if !where_inserted  {
+                sql += " WHERE ";
+                where_inserted = true;
+            }else{
+                sql += " AND ";
+            }
+
+            sql += " hash = ? ";
+
+            let mut hasher = DefaultHasher::new();
+            task.hash(&mut hasher);
+            let hash = hasher.finish() as i64;
+            args.push(hash.to_string());
+        };
+
+        let mut stmt = conn.prepare(&sql)?;
+        let cmds_result = stmt
+            .query_map(rusqlite::params_from_iter(args.iter()), |row| {
+                let cs:String = row.get_unwrap(0);
+                // let command = CommandType::from_str(&cs)?;
+                let command = match cs.parse(){
+                    Ok(cmd_type) => cmd_type,
+                    Err(e) => return Result::Err(e),
+                };
+                let task = row.get_unwrap(1);
+                let cmd_datetime:DateTime<Utc> = row.get_unwrap(2);
+               Ok(Command{
+                   command,
+                   task,
+                   cmd_datetime,
+               })
+            });
+
+        let mut cmds = Vec::new();
+        for res in cmds_result {
+           cmds.push(res.unwrap()) ;
+        }
+
+        cmds
 
     }
 
