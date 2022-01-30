@@ -110,7 +110,7 @@ impl ClockRuster {
             args.push(start.to_string());
         };
 
-        if let Some(end) = opt_start{
+        if let Some(end) = opt_end{
             if !where_inserted  {
                 sql += " WHERE ";
                 where_inserted = true;
@@ -126,7 +126,7 @@ impl ClockRuster {
         if let Some(task) = opt_task{
             if !where_inserted  {
                 sql += " WHERE ";
-                where_inserted = true;
+                // where_inserted = true;
             }else{
                 sql += " AND ";
             }
@@ -140,29 +140,30 @@ impl ClockRuster {
         };
 
         let mut stmt = conn.prepare(&sql)?;
-        let cmds_result = stmt
+        let cmds_iter = stmt
             .query_map(rusqlite::params_from_iter(args.iter()), |row| {
-                let cs:String = row.get_unwrap(0);
+                let cs:String = row.get(0)?;
                 // let command = CommandType::from_str(&cs)?;
-                let command = match cs.parse(){
-                    Ok(cmd_type) => cmd_type,
-                    Err(e) => return Result::Err(e),
-                };
-                let task = row.get_unwrap(1);
-                let cmd_datetime:DateTime<Utc> = row.get_unwrap(2);
+                // let command = match cs.parse(){
+                //     Ok(cmd_type) => cmd_type,
+                //     Err(e) => rusqlite::Error::from(e),
+                // };
+                let command = cs.parse::<CommandType>().unwrap();
+                let task = row.get(1)?;
+                let cmd_datetime:DateTime<Utc> = row.get(2)?;
                Ok(Command{
                    command,
                    task,
                    cmd_datetime,
                })
-            });
+            })?;
 
-        let mut cmds = Vec::new();
-        for res in cmds_result {
+        let mut cmds: Vec<Command> = Vec::new();
+        for res in cmds_iter {
            cmds.push(res.unwrap()) ;
         }
 
-        cmds
+        Ok(cmds)
 
     }
 
