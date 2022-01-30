@@ -1,9 +1,13 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Error, Formatter};
 use chrono::{DateTime, Utc};
 use std::hash::{ Hash,Hasher };
+use std::str::FromStr;
+use std::string::ParseError;
+use chrono::format::Parsed;
 
 use color_eyre::{eyre::eyre, Report, Result};
 use tracing::{info};
+
 const COMMAND_EG: &str = "clock-in::2021-10-31T04:10:29.316132167Z::'task description'";
 
 ///Available commands
@@ -18,6 +22,19 @@ impl Display for CommandType {
         match self {
             CommandType::ClockIn => write!(f, "clock-in"),
             CommandType::ClockOut => write!(f, "clock-out"),
+        }
+    }
+}
+
+impl FromStr for CommandType{
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+
+        match &s.to_uppercase()[..]{
+            "CLOCKIN" | "CLOCK-IN" => Ok(Self::ClockIn),
+            "CLOCKOUT" | "CLOCK-OUT" => Ok(Self::ClockOut),
+            _ => Err(Error),
         }
     }
 }
