@@ -90,12 +90,12 @@ impl ClockRuster {
         }
     }
 
-    ///Create string with breakdown of tasks, start and end
+    ///Return list of commands
     /// Optionally limited by time
     /// Optionally limited to a specific task
-    pub fn time_report(&self, opt_start:Option<Utc>, opt_end:Option<Utc>, opt_task:Option<&str>)->Result<Vec<Command>, Report>{
+    pub fn command_list(&self, opt_start:Option<Utc>, opt_end:Option<Utc>, opt_task:Option<&str>)->Result<Vec<Command>, Report>{
         let conn = Connection::open(&self.connection_string)?;
-        let mut sql = "select command, task, cmd_date from clock_rust ".to_string();
+        let mut sql = "select command, task, cmd_date from clock_rust_tasks ".to_string();
         let mut args = Vec::new();
         let mut where_inserted = false;
 
@@ -160,6 +160,7 @@ impl ClockRuster {
 
         let mut cmds: Vec<Command> = Vec::new();
         for res in cmds_iter {
+            info!("Pushing command into vec");
            cmds.push(res.unwrap()) ;
         }
 
@@ -252,11 +253,44 @@ mod tests{
                         Err(why) => panic!("Unable to perform tracking query: {}", why),
                     }
                 },
-                Err(why)=>panic!("Unable to run command: {}", why),
+                Err(why)=> return Err(eyre!(format!("Unable to run command: {}", why))),
             }
         }
         std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
         Ok(())
+    }
+
+    #[test]
+    fn test_command_list()->Result<(), Report>{
+        config::setup_test_logging();
+        let cr = ClockRuster::init(TEST_DB_STRING);
+        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+            cr.ensure_storage_exists(&conn)?;
+            //run a clock-in and clock-out command
+            let ci = create_test_cmd( CommandType::ClockIn,TEST_TASK, "2022-01-31 17:00:28.974008356+00:00");
+            let co = create_test_cmd( CommandType::ClockOut,TEST_TASK, "2022-01-31 17:00:28.974008356+00:00");
+            cr.run_clock_command(&ci)?;
+            cr.run_clock_command(&co)?;
+            //let's start by getting all of them
+            let cl = cr.command_list(None, None, None);
+            match cl{
+                Ok(cmds) => assert!(cmds.len()==2),
+               Err(e) => return Err(eyre!(format!("Unable to run command: {}", e))),
+            }
+        }
+
+        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
+        Ok(())
+    }
+
+    ///Utility method for creating test commands to log
+    fn create_test_cmd(command:CommandType, task_str:&str, dt:&str ) -> Command {
+        let task = task_str.to_string();
+       Command{
+           command,
+           task,
+           cmd_datetime: dt.parse().unwrap(),
+       }
     }
 
 }
