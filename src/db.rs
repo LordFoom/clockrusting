@@ -93,11 +93,12 @@ impl ClockRuster {
     ///Return list of commands
     /// Optionally limited by time
     /// Optionally limited to a specific task
-    pub fn command_list(&self, opt_start:Option<Utc>, opt_end:Option<Utc>, opt_task:Option<&str>)->Result<Vec<Command>, Report>{
+    pub fn command_list(&self, opt_start:Option<DateTime<Utc>>, opt_end:Option<DateTime<Utc>>, opt_task:Option<&str>)->Result<Vec<Command>, Report>{
         let conn = Connection::open(&self.connection_string)?;
         let mut sql = "select command, task, cmd_date from clock_rust_tasks ".to_string();
         let mut args = Vec::new();
         let mut where_inserted = false;
+
 
         //okay let's try this with straight up strings
         if let Some(start) = opt_start{
@@ -122,7 +123,6 @@ impl ClockRuster {
             args.push(end.to_string());
         };
 
-        sql += " ORDER BY cmd_date DESC";
         if let Some(task) = opt_task{
             if !where_inserted  {
                 sql += " WHERE ";
@@ -139,6 +139,8 @@ impl ClockRuster {
             args.push(hash.to_string());
         };
 
+        sql += " ORDER BY cmd_date DESC";
+        info!("Sql is = '{}' ", sql);
         let mut stmt = conn.prepare(&sql)?;
         let cmds_iter = stmt
             .query_map(rusqlite::params_from_iter(args.iter()), |row| {
@@ -168,6 +170,7 @@ impl ClockRuster {
 
     }
 
+    // pub fn write_report(&self, opt_start)
 }
 
 #[cfg(test)]
@@ -180,6 +183,7 @@ mod tests{
 
     const TEST_DB_STRING: &str = "./clock_rust_test";
     const TEST_TASK: &str = "Test test data";
+    const TEST_TASK_2: &str = "Test test data of another kind";
 
     #[test]
     fn test_create_table()->Result<(), Report>{
@@ -276,6 +280,45 @@ mod tests{
             match cl{
                 Ok(cmds) => assert!(cmds.len()==2),
                Err(e) => return Err(eyre!(format!("Unable to run command: {}", e))),
+            }
+        }
+
+        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
+        Ok(())
+    }
+    #[test]
+    fn test_command_list_with_args()->Result<(), Report>{
+        config::setup_test_logging();
+        let cr = ClockRuster::init(TEST_DB_STRING);
+        if let Ok(conn) = Connection::open(cr.connection_string.clone()){
+            cr.ensure_storage_exists(&conn)?;
+            //run a clock-in and clock-out command
+            let ci = create_test_cmd( CommandType::ClockIn,TEST_TASK, "2022-01-31 17:00:28.974008356+00:00");
+            let co = create_test_cmd( CommandType::ClockOut,TEST_TASK_2, "2022-02-04 17:00:28.974008356+00:00");
+            cr.run_clock_command(&ci)?;
+            cr.run_clock_command(&co)?;
+            //limit by start date
+            let start_date: chrono::DateTime<Utc> = "2022-02-01 17:00:28.000000000+00:00".parse()?;
+            let cl = cr.command_list(Option::Some(start_date), None, None);
+            match cl{
+                Ok(cmds) => assert!(cmds.len()==1),
+                Err(e) => return Err(eyre!(format!("Unable to run command: {}", e))),
+            }
+
+            //limit by end date
+            let end_date: chrono::DateTime<Utc> = "2022-02-01 17:00:28.000000000+00:00".parse()?;
+            let cl = cr.command_list(None, Option::Some(end_date), None);
+            match cl{
+                Ok(cmds) => assert!(cmds.len()==1),
+                Err(e) => return Err(eyre!(format!("Unable to run command: {}", e))),
+            }
+
+            // by task
+            //
+            let cl = cr.command_list(None, None, Option::Some(TEST_TASK_2));
+            match cl{
+                Ok(cmds) => assert!(cmds.len()==1),
+                Err(e) => return Err(eyre!(format!("Unable to run command: {}", e))),
             }
         }
 
