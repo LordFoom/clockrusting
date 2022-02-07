@@ -1,6 +1,7 @@
 pub mod command;
 pub mod config;
 pub mod db;
+pub mod output;
 
 ///Library for adding time tracking to an application
 
