@@ -26,7 +26,11 @@ impl ClockRuster {
         }
     }
 
-    fn ensure_storage_exists(&self, conn: &Connection) -> Result<(), Report> {
+    pub fn connection_string(&self) -> String{
+        self.connection_string.clone()
+    }
+
+    pub fn ensure_storage_exists(&self, conn: &Connection) -> Result<(), Report> {
         //check for table's existence
         conn.execute("
             CREATE TABLE IF NOT EXISTS clock_rust_tasks(
@@ -139,7 +143,7 @@ impl ClockRuster {
             args.push(hash.to_string());
         };
 
-        sql += " ORDER BY cmd_date DESC";
+        sql += " ORDER BY task, command, cmd_date DESC";
         info!("Sql is = '{}' ", sql);
         let mut stmt = conn.prepare(&sql)?;
         let cmds_iter = stmt
@@ -173,17 +177,18 @@ impl ClockRuster {
     // pub fn write_report(&self, opt_start)
 }
 
+
 #[cfg(test)]
-mod tests{
+pub mod tests{
     use chrono::Utc;
     use crate::config;
 
     use crate::command::CommandType;
     use super::*;
 
-    const TEST_DB_STRING: &str = "./clock_rust_test";
-    const TEST_TASK: &str = "Test test data";
-    const TEST_TASK_2: &str = "Test test data of another kind";
+    pub const TEST_DB_STRING: &str = "./clock_rust_test";
+    pub const TEST_TASK: &str = "Test test data";
+    pub const TEST_TASK_2: &str = "Test test data of another kind";
 
     #[test]
     fn test_create_table()->Result<(), Report>{
@@ -267,6 +272,8 @@ mod tests{
     #[test]
     fn test_command_list()->Result<(), Report>{
         config::setup_test_logging();
+        //ensure we don't have some left-over data interfering
+        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
         let cr = ClockRuster::init(TEST_DB_STRING);
         if let Ok(conn) = Connection::open(cr.connection_string.clone()){
             cr.ensure_storage_exists(&conn)?;
@@ -327,7 +334,7 @@ mod tests{
     }
 
     ///Utility method for creating test commands to log
-    fn create_test_cmd(command:CommandType, task_str:&str, dt:&str ) -> Command {
+    pub fn create_test_cmd(command:CommandType, task_str:&str, dt:&str ) -> Command {
         let task = task_str.to_string();
        Command{
            command,
