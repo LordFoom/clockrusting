@@ -73,11 +73,15 @@ impl Command {
         }
     }
 
+    //For when we want to print out our time report
+    // pub fn key(&self){
+    //
+    // }
 }
 
 impl Display for Command {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}::{}::{}", self.command, self.cmd_datetime, self.task)
+        write!(f, "'{}' => {} at '{}'", self.task, self.command, self.cmd_datetime.to_rfc3339())
     }
 }
 

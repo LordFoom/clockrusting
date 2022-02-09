@@ -273,7 +273,7 @@ pub mod tests{
     fn test_command_list()->Result<(), Report>{
         config::setup_test_logging();
         //ensure we don't have some left-over data interfering
-        std::fs::remove_file(TEST_DB_STRING).expect("could not delete test sqlite db file");
+        std::fs::remove_file(TEST_DB_STRING);//don't care if it fails
         let cr = ClockRuster::init(TEST_DB_STRING);
         if let Ok(conn) = Connection::open(cr.connection_string.clone()){
             cr.ensure_storage_exists(&conn)?;

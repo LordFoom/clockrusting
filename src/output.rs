@@ -5,12 +5,18 @@ use crate::command::Command;
 ///Write out a neat little file with our time tracking report
 pub fn write_tracking_report(file_path: &str, cmd_list:&Vec<Command>) -> Result<(), Report> {
     let mut file_contents = String::new();
+    //need to think through this here
+    // let mut curr_task_start: BTreeMap<String, String> = BTreeMap::new();
+    //we loop through the tasks, they should be ordered by time and task
+    //when there is a new clock-in command for a task, with a different time, we put it in the map
     cmd_list.iter()
             .for_each(|cmd| {
+                // if cmd.task
                 file_contents.push_str(&cmd.to_string());
                 file_contents.push('\n');
             });
 
+    //let's do a little formatting
     fs::write(file_path, file_contents)?;
     Ok(())
 }
