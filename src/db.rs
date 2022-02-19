@@ -143,7 +143,7 @@ impl ClockRuster {
             args.push(hash.to_string());
         };
 
-        sql += " ORDER BY task, cmd_date DESC";
+        sql += " ORDER BY task, cmd_date";
         info!("Sql is = '{}' ", sql);
         let mut stmt = conn.prepare(&sql)?;
         let cmds_iter = stmt
