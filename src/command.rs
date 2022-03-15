@@ -73,6 +73,10 @@ impl Command {
         }
     }
 
+    pub fn get_date_str(self) ->String{
+        self.cmd_datetime.to_rfc3339()
+    }
+
     //For when we want to print out our time report
     // pub fn key(&self){
     //
